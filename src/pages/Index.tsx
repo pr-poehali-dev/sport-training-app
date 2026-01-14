@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Icon from '@/components/ui/icon';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Exercise {
@@ -35,9 +37,62 @@ interface AthleteParams {
   arm: number;
 }
 
+interface NotificationSettings {
+  enabled: boolean;
+  workoutTime: string;
+  motivationalMessages: boolean;
+  restDayReminders: boolean;
+}
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState('today');
   const [todayCompleted, setTodayCompleted] = useState(false);
+  const [showMotivation, setShowMotivation] = useState(false);
+
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    enabled: true,
+    workoutTime: '18:00',
+    motivationalMessages: true,
+    restDayReminders: true,
+  });
+
+  const motivationalQuotes = [
+    '💪 Сегодня отличный день для тренировки!',
+    '🔥 Каждая тренировка приближает тебя к цели!',
+    '⚡ Сила не приходит от побед. Она приходит от борьбы!',
+    '🎯 Твои мышцы растут, когда ты отдыхаешь, но сила воли — когда ты тренируешься!',
+    '🏆 Единственная плохая тренировка — это та, которой не было!',
+  ];
+
+  useEffect(() => {
+    if (notificationSettings.motivationalMessages && !todayCompleted) {
+      const timer = setTimeout(() => {
+        setShowMotivation(true);
+        const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+        toast.success(randomQuote, {
+          duration: 5000,
+          position: 'top-center',
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (notificationSettings.enabled) {
+      const checkWorkoutTime = setInterval(() => {
+        const now = new Date();
+        const [hours, minutes] = notificationSettings.workoutTime.split(':');
+        if (now.getHours() === parseInt(hours) && now.getMinutes() === parseInt(minutes)) {
+          toast('⏰ Время тренировки!', {
+            description: 'Не забудь выполнить план на сегодня',
+            duration: 10000,
+          });
+        }
+      }, 60000);
+      return () => clearInterval(checkWorkoutTime);
+    }
+  }, [notificationSettings]);
 
   const [todayWorkout] = useState<Exercise[]>([
     { id: 1, name: 'Жим штанги лежа', weight: 80, sets: 4, reps: 10 },
@@ -100,10 +155,18 @@ const Index = () => {
 
   const handleCompleteWorkout = () => {
     setTodayCompleted(true);
+    toast.success('🎉 Отличная работа!', {
+      description: 'Тренировка завершена. Не забудь восстановиться!',
+      duration: 5000,
+    });
   };
 
   const updateAthleteParam = (field: keyof AthleteParams, value: string | number) => {
     setAthleteParams(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateNotificationSetting = (field: keyof NotificationSettings, value: boolean | string) => {
+    setNotificationSettings(prev => ({ ...prev, [field]: value }));
   };
 
   const totalWorkouts = workoutHistory.filter(w => w.completed).length;
@@ -131,7 +194,7 @@ const Index = () => {
 
       <div className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-6 h-auto p-1">
             <TabsTrigger value="today" className="gap-2 py-2.5">
               <Icon name="Calendar" size={16} />
               <span className="hidden sm:inline">План</span>
@@ -151,6 +214,10 @@ const Index = () => {
             <TabsTrigger value="profile" className="gap-2 py-2.5">
               <Icon name="Award" size={16} />
               <span className="hidden sm:inline">Профиль</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-2 py-2.5">
+              <Icon name="Bell" size={16} />
+              <span className="hidden sm:inline">Уведомления</span>
             </TabsTrigger>
           </TabsList>
 
@@ -453,6 +520,125 @@ const Index = () => {
                     </div>
                   </div>
                 </Card>
+
+                {showMotivation && (
+                  <Card className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 animate-scale-in">
+                    <div className="flex items-center gap-3">
+                      <Icon name="Sparkles" size={24} className="text-primary" />
+                      <div>
+                        <p className="font-semibold">Мотивация дня</p>
+                        <p className="text-sm text-muted-foreground">
+                          {motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-4 animate-fade-in">
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Icon name="Bell" size={24} className="text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold">Уведомления</h2>
+                  <p className="text-muted-foreground">Настройте напоминания о тренировках</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Icon name="BellRing" size={18} className="text-primary" />
+                      <Label htmlFor="notifications-enabled" className="text-base font-medium cursor-pointer">
+                        Включить уведомления
+                      </Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Получать напоминания о тренировках</p>
+                  </div>
+                  <Switch
+                    id="notifications-enabled"
+                    checked={notificationSettings.enabled}
+                    onCheckedChange={(checked) => updateNotificationSetting('enabled', checked)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="workout-time" className="flex items-center gap-2">
+                    <Icon name="Clock" size={18} className="text-primary" />
+                    Время тренировки
+                  </Label>
+                  <Input
+                    id="workout-time"
+                    type="time"
+                    value={notificationSettings.workoutTime}
+                    onChange={(e) => updateNotificationSetting('workoutTime', e.target.value)}
+                    disabled={!notificationSettings.enabled}
+                  />
+                  <p className="text-sm text-muted-foreground">Ежедневное напоминание в выбранное время</p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Icon name="Sparkles" size={18} className="text-primary" />
+                      <Label htmlFor="motivational" className="text-base font-medium cursor-pointer">
+                        Мотивационные сообщения
+                      </Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Получать вдохновляющие цитаты</p>
+                  </div>
+                  <Switch
+                    id="motivational"
+                    checked={notificationSettings.motivationalMessages}
+                    onCheckedChange={(checked) => updateNotificationSetting('motivationalMessages', checked)}
+                    disabled={!notificationSettings.enabled}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Icon name="Moon" size={18} className="text-primary" />
+                      <Label htmlFor="rest-day" className="text-base font-medium cursor-pointer">
+                        Напоминания о днях отдыха
+                      </Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Уведомления о важности восстановления</p>
+                  </div>
+                  <Switch
+                    id="rest-day"
+                    checked={notificationSettings.restDayReminders}
+                    onCheckedChange={(checked) => updateNotificationSetting('restDayReminders', checked)}
+                    disabled={!notificationSettings.enabled}
+                  />
+                </div>
+
+                <Card className="p-4 bg-muted/30">
+                  <div className="flex items-start gap-3">
+                    <Icon name="Info" size={20} className="text-primary mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Как работают уведомления?</p>
+                      <p className="text-sm text-muted-foreground">
+                        Напоминания помогут не пропустить тренировку. Мотивационные сообщения появляются случайным образом, чтобы вдохновить вас на новые достижения.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Button 
+                  className="w-full gap-2" 
+                  size="lg"
+                  onClick={() => toast.success('✅ Настройки сохранены', { duration: 3000 })}
+                >
+                  <Icon name="Save" size={20} />
+                  Сохранить настройки
+                </Button>
               </div>
             </Card>
           </TabsContent>
